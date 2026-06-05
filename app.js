@@ -1,4 +1,36 @@
 // ==========================================================================
+// Debug Log Visualizer (Displays JS/Firestore errors directly on screen)
+// ==========================================================================
+function showDebugError(message) {
+    let errDiv = document.getElementById('debug-error-banner');
+    if (!errDiv) {
+        errDiv = document.createElement('div');
+        errDiv.id = 'debug-error-banner';
+        errDiv.style.position = 'fixed';
+        errDiv.style.top = '10px';
+        errDiv.style.left = '50%';
+        errDiv.style.transform = 'translateX(-50%)';
+        errDiv.style.background = '#ff4444';
+        errDiv.style.color = '#fff';
+        errDiv.style.padding = '10px 20px';
+        errDiv.style.borderRadius = '8px';
+        errDiv.style.zIndex = '10000';
+        errDiv.style.fontWeight = 'bold';
+        errDiv.style.boxShadow = '0 4px 15px rgba(0,0,0,0.3)';
+        document.body.appendChild(errDiv);
+    }
+    errDiv.textContent = '偵錯資訊: ' + message;
+}
+
+window.addEventListener('error', (e) => {
+    showDebugError(e.message);
+});
+
+window.addEventListener('unhandledrejection', (e) => {
+    showDebugError(e.reason ? e.reason.message || e.reason : e);
+});
+
+// ==========================================================================
 // Firebase & App Configuration
 // ==========================================================================
 const firebaseConfig = {
@@ -235,6 +267,7 @@ function setupRealtimeSubscription() {
             });
         }, (error) => {
             console.error("Realtime subscription error:", error);
+            showDebugError("Firestore 訂閱失敗: " + error.message);
         });
 }
 
