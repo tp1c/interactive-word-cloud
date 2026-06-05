@@ -298,17 +298,51 @@ function setupSharingInfo() {
     });
 
     // Copy to clipboard event listener
-    btnCopy.addEventListener('click', () => {
-        navigator.clipboard.writeText(currentUrl)
-            .then(() => {
+    // Helper function for copy fallback
+    function fallbackCopyText(text) {
+        const textArea = document.createElement("textarea");
+        textArea.value = text;
+        // Avoid scrolling to bottom
+        textArea.style.top = "0";
+        textArea.style.left = "0";
+        textArea.style.position = "fixed";
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        try {
+            const successful = document.execCommand('copy');
+            if (successful) {
                 btnCopy.textContent = '✅';
                 setTimeout(() => {
                     btnCopy.textContent = '📋';
                 }, 2000);
-            })
-            .catch(err => {
-                console.error('Copy URL failed:', err);
-            });
+            } else {
+                alert('複製失敗，請手動複製網址：' + text);
+            }
+        } catch (err) {
+            console.error('Fallback copy failed:', err);
+            alert('複製失敗，請手動複製網址：' + text);
+        }
+        document.body.removeChild(textArea);
+    }
+
+    // Copy to clipboard event listener
+    btnCopy.addEventListener('click', () => {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(currentUrl)
+                .then(() => {
+                    btnCopy.textContent = '✅';
+                    setTimeout(() => {
+                        btnCopy.textContent = '📋';
+                    }, 2000);
+                })
+                .catch(err => {
+                    console.error('Copy URL failed, trying fallback:', err);
+                    fallbackCopyText(currentUrl);
+                });
+        } else {
+            fallbackCopyText(currentUrl);
+        }
     });
 }
 
