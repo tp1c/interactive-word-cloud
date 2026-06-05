@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🌌 互動即時文字雲 | Real-time Word Wall</title>
+    <!-- Google Fonts: Outfit -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Noto+Sans+TC:wght@300;400;700;900&display=swap" rel="stylesheet">
+    <!-- Main Style Sheet -->
+    <link rel="stylesheet" href="style.css?v=2">
+    <!-- Supabase JS Client CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.43.4/dist/umd/supabase.min.js"></script>
+    <!-- QRCode JS Library CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
+</head>
+<body>
+    <!-- Background glowing spots -->
+    <div class="glow-bg">
+        <div class="glowing-circle glow-1"></div>
+        <div class="glowing-circle glow-2"></div>
+        <div class="glowing-circle glow-3"></div>
+    </div>
+
+    <!-- Main Container -->
+    <div class="app-container">
+        <!-- Glassmorphic Header / Control Panel -->
+        <header class="control-panel">
+            <div class="logo">
+                <span class="emoji">🌌</span>
+                <h1>即時文字雲 <span>Word Cloud</span></h1>
+            </div>
+            
+            <form id="word-form" class="word-input-container">
+                <input type="text" id="word-input" placeholder="輸入一個詞彙..." maxlength="25" required autocomplete="off">
+                <button type="submit" class="btn btn-submit">
+                    <span>送出</span>
+                    <div class="btn-glow"></div>
+                </button>
+            </form>
+
+            <div class="header-actions">
+                <button id="toggle-cloud-btn" class="btn btn-toggle">
+                    <span class="icon">👁️</span>
+                    <span class="text">隱藏文字雲</span>
+                </button>
+                <button id="clear-cloud-btn" class="btn btn-clear">
+                    <span class="icon">🗑️</span>
+                    <span class="text">清空文字雲</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- Word Cloud Display Area -->
+        <main class="cloud-display-area" id="cloud-container">
+            <!-- Dynamic words will be inserted here -->
+            <div class="empty-state" id="empty-state">
+                <p>文字雲目前是空的，快在上方輸入詞彙，啟動文字旅程！</p>
+            </div>
+        </main>
+
+        <!-- Dynamic QR Code Card -->
+        <div class="share-card" id="share-card">
+            <div class="share-header">
+                <h3>掃描加入共創</h3>
+                <p>邀請好友一起輸入詞彙</p>
+            </div>
+            <div class="qrcode-container">
+                <canvas id="qrcode-canvas"></canvas>
+            </div>
+            <div class="share-url">
+                <span id="current-url">Loading...</span>
+                <button class="btn-copy" id="btn-copy" title="複製網址">📋</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main App Script -->
+    <script src="app.js?v=2"></script>
+</body>
+</html>
