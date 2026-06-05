@@ -266,7 +266,7 @@ function setupRealtimeSubscription() {
         .onSnapshot((snapshot) => {
             snapshot.docChanges().forEach((change) => {
                 if (change.type === 'added') {
-                    const data = change.data();
+                    const data = change.doc.data();
                     renderWord(data.word, change.doc.id);
                 } else if (change.type === 'removed') {
                     // Remove from wordsList
