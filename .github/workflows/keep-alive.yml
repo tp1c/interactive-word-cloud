@@ -2,8 +2,9 @@ name: Keep Supabase Alive
 
 on:
   schedule:
-    # 每天的 UTC 00:00 (台灣時間 08:00) 執行一次
-    - cron: '0 0 * * *'
+    # 每周一早上 09:00 (以你目前系統的 UTC-4 時區計算，對應 UTC 13:00) 執行一次
+    # 如果是台灣時間 (UTC+8) 的早上 09:00，請改為 '0 1 * * 1'
+    - cron: '0 13 * * 1'
   workflow_dispatch: # 允許手動觸發測試
 
 jobs:
