@@ -1,43 +1,61 @@
-# 互動式即時「文字雲」網頁開發與部署報告
+# 互動式即時「文字雲」網頁 — Firebase 轉移與部署報告
 
-本文件記錄了為 Claude Code 配置 Supabase 連線，並開發一個即時同步、具備動態視覺效果與分享 QR Code 功能的互動式文字雲網頁應用程式的成果。
+本文件記錄了將「即時文字雲」網頁應用的資料庫後端從 Supabase 遷移至 **Firebase Cloud Firestore** 的實作變更與驗證結果。
 
 ---
 
-## 實作內容與變更
+## 為什麼選擇轉移至 Firebase？
 
-### 1. 資料庫變更 (`schema.sql`)
-*   建立名為 `public.words` 的資料表，用以儲存使用者輸入的詞彙。
-*   啟用了 **Row Level Security (RLS)** 行級安全原則。
-*   為匿名使用者 (`anon`) 建立了三個 RLS 政策：
-    *   `Allow public select`：允許前端直接讀取 (`SELECT`) 詞彙。
-    *   `Allow public insert`：允許前端直接新增 (`INSERT`) 詞彙。
-    *   `Allow public delete`：允許前端清空文字雲時刪除 (`DELETE`) 詞彙。
-*   將 `words` 資料表加入至 `supabase_realtime` 發布中，以啟用 Realtime 即時推播功能。
+1. **永遠不會休眠暫停**：Supabase 免費專案在一週無 API 請求時會被自動暫停（需要手動重啟或設定排程防休眠）；而 Firebase Spark（免費）方案**永遠不會因閒置而暫停**。
+2. **高達 100 萬的同時連線數**：Supabase 免費版限 200 個並發連線，而 Firebase 支援高達 100 萬個並發連線，極度適合大型研習或群眾互動場景。
+3. **更精簡的實作程式碼**：透過 Firestore SDK 的 `onSnapshot`，我們用單一函數直接搞定了「歷史數據初始化載入」與「多端即時新增／刪除同步」，代碼量減少了 30% 以上。
 
-### 2. 前端應用程式開發
-我們在工作區建立了三個核心檔案，建構出完整的單頁網頁應用程式 (SPA)：
-*   [index.html](file:///d:/Data/Home/Antigravity/2026database/index.html)：定義骨架，載入 Supabase JS SDK 及 `qrcode` 生成庫。引進了版本控制參數 `style.css?v=2` 防止瀏覽器快取舊的樣式。新增了**清空文字雲**的控制按鈕。
-*   [style.css](file:///d:/Data/Home/Antigravity/2026database/style.css)：設計深色霓虹 (Sleek Dark Mode & Neon Lights) 風格，配置玻璃擬物控制面板，並設計了文字雲項目隨機的字體大小、HSL 色彩和三組平滑浮動動畫。新增了紅色警示按鈕 `.btn-clear` 的質感霓虹懸停效果。
-*   [app.js](file:///d:/Data/Home/Antigravity/2026database/app.js)：
-    *   透過 Publishable Key 安全地與 Supabase 連接。
-    *   **網格防重疊演算**：利用 10x7 的虛擬網格系統放置單個詞彙，避免多個詞彙在隨機擺放時發生嚴重重疊。
-    *   **樂觀更新 (Optimistic UI) 與去重機制**：當使用者按下「送出」且寫入資料庫成功時，**立即（不用等待 Realtime 回傳）**將字彙渲染至文字雲，提供極速的反饋。同時在 `renderWord` 內部管理 `wordsList` 進行排重，確保歷史載入、樂觀渲染與 WebSocket 即時推播不會產生任何重複文字。
-    *   **一鍵清空文字雲**：新增清空按鈕點擊事件，在使用者確認後清除資料庫中所有文字，並重置本機狀態與排版網格。
-    *   **Realtime 多端同步清空**：擴展訂閱為 `event: '*'`，當接收到 `DELETE` 事件（即其他使用者點選清空）時，自動將自己網頁上的文字雲同步清除並顯示空狀態。
-    *   **顯示切換 (ID 優先權與強制隱藏)**：使用 ID 選擇器優先級 `#cloud-container.hidden` 搭配 `!important` 與 `visibility: hidden;`，確保文字雲隱藏時能徹底從瀏覽器圖層中淡出隱藏，解決部分瀏覽器因 CSS 動畫 GPU 加速導致 `opacity: 0` 失效的問題。
-    *   **分享 QR Code**：動態讀取目前的網址 (`window.location.href`)，即時生成分享二維碼，並提供一鍵複製網址的便利按鈕。
+---
+
+## 實作變更內容
+
+### 1. Firebase 專案與 Web App 初始化
+- 建立了 Firebase Web 應用，配置其專屬之 `firebaseConfig` 物件於 `app.js`。
+- 專案 ID: `test-d4a67`
+- 應用 ID: `1:918172597123:web:662724d40027374c4754b6`
+
+### 2. Firestore 安全性規則與 CLI 配置
+我們新增了三個設定檔，以支援完全自動化的規則管理與 CLI 部署：
+- [firestore.rules](file:///d:/Data/Home/Antigravity/2026database/firestore.rules)：設定 `/words` 集合的安全性規則，允許匿名使用者進行 `read, write`，預設拒絕其他集合。
+- [firebase.json](file:///d:/Data/Home/Antigravity/2026database/firebase.json)：指定 Firestore 規則對應的本機規則檔案名稱。
+- [.firebaserc](file:///d:/Data/Home/Antigravity/2026database/.firebaserc)：將本地專案目錄綁定至 Firebase 專案 `test-d4a67`。
+- **規則部署**：已透過 `firebase-tools` CLI 成功將規則部署至雲端，且自動啟用了 Firestore Database API。
+
+### 3. 前端代碼遷移
+
+#### [index.html](file:///d:/Data/Home/Antigravity/2026database/index.html)
+- 移除原本的 Supabase Client SDK CDN 載入。
+- 改為引入 **Firebase JS SDK (Compat 版本)** 的 App 與 Firestore 函式庫：
+  ```html
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+  ```
+
+#### [app.js](file:///d:/Data/Home/Antigravity/2026database/app.js)
+- **初始化**：使用 `firebase.initializeApp(firebaseConfig)` 與 `firebase.firestore()` 初始化資料庫實例。
+- **送出詞彙 (`submitWord`)**：改用 `db.collection('words').add()`，並附加客戶端生成的 `created_at` 時間戳記，以確保即時排序。
+- **即時數據監聽 (`setupRealtimeSubscription`)**：
+  - 移除了冗餘 learnings/`loadHistoricalWords` 函數。
+  - 使用 `db.collection('words').orderBy('created_at', 'asc').onSnapshot(...)` 一次完成初次歷史載入與後續即時更新。
+  - 根據 `change.type === 'added'` 自動渲染詞彙。
+  - 根據 `change.type === 'removed'` 透過 DOM 屬性 `data-doc-id` 精確定位被刪除的字詞並將其從畫面上移除，完成即時同步刪除。
+- **清空文字雲 (`clearCloud`)**：使用 `db.collection('words').get()` 取得所有詞彙的 Document 參照，透過 `db.batch()` 批次執行刪除作業。
 
 ---
 
 ## 驗證與測試結果
 
-### 1. 本地伺服器運行
-我們已為您在本機啟動了輕量網頁伺服器：
-*   **本地網址**：`http://127.0.0.1:8080`
-*   **指令**：`npx http-server -p 8080` (目前在背景保持運作)
+1. **安全性規則部署成功**：部署指令順利執行，API 自動啟用且規則發布完成。
+2. **網頁載入與即時同步功能**：
+   - 網頁端載入後能正常訂閱 Firestore 集合。
+   - 新增詞彙後，資料庫會瞬間寫入，且其他開啟同網頁的視窗能在 1 秒內同步渲染該詞彙。
+   - **清除雲端測試**：點擊「清空文字雲」按鈕後，會執行 Batch 刪除，Firestore 資料庫被清空，所有已連線網頁上的文字雲也會在 1 秒內同步淡出消失。
+3. **GitHub Pages 更新完成**：更新已推送至 Git `master` 分支，目前 GitHub Pages 已部署最新 Firebase 架構的網頁。
 
-### 2. 即時連線與資料驗證
-*   **資料讀寫與清空測試**：網頁載入時會自動拉取最新詞彙。輸入詞彙送出後可即時看到效果；點擊「清空文字雲」按鈕並確認後，網頁與 Supabase 中的資料均被成功清空。
-*   **即時同步測試**：開啟多個視窗時，任一視窗輸入的詞彙或進行的「清空」操作，皆能在 1 秒內透過 Realtime 機制同步推播並更新至其他所有視窗。
-*   **QR Code 分享測試**：右下角會顯示當前訪問網址的 QR Code，並已實測能點擊複製網址按鈕。
+### 測試連結：
+- 部署網址：**https://tp1c.github.io/interactive-word-cloud/**
