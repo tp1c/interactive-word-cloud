@@ -1,11 +1,19 @@
 // ==========================================================================
-// Supabase & App Configuration
+// Firebase & App Configuration
 // ==========================================================================
-const SUPABASE_URL = 'https://lvspugkfgaxtfidzlqrc.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_ukYYuq9mlAVGjuoi8kQTxg_xpYHlzCu';
+const firebaseConfig = {
+  projectId: "test-d4a67",
+  appId: "1:918172597123:web:662724d40027374c4754b6",
+  storageBucket: "test-d4a67.firebasestorage.app",
+  apiKey: "AIzaSyDO32LGprSg9zUGdiQG85BCPg_2zsXnVdo",
+  authDomain: "test-d4a67.firebaseapp.com",
+  messagingSenderId: "918172597123",
+  measurementId: "G-M76G1P8B77"
+};
 
-// Initialize Supabase Client
-const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+// Initialize Firebase
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
 
 // DOM Elements
 const cloudContainer = document.getElementById('cloud-container');
@@ -86,12 +94,12 @@ function clearGrid() {
 // ==========================================================================
 
 // Add a word to the screen with beautiful animations and layout positioning
-function renderWord(wordText) {
-    if (!wordText) return;
+function renderWord(wordText, docId) {
+    if (!wordText || !docId) return;
     
     // Prevent duplicate rendering
-    if (wordsList.includes(wordText)) return;
-    wordsList.push(wordText);
+    if (wordsList.some(item => item.id === docId)) return;
+    wordsList.push({ id: docId, text: wordText });
 
     // Hide the empty state if it's visible
     if (emptyState) {
@@ -112,6 +120,7 @@ function renderWord(wordText) {
     // Create the DOM element
     const wordEl = document.createElement('div');
     wordEl.className = 'word-cloud-item';
+    wordEl.setAttribute('data-doc-id', docId); // Store document ID
     wordEl.textContent = wordText;
 
     // Generate style attributes
@@ -167,31 +176,8 @@ function hslToRgb(h, s, l) {
 }
 
 // ==========================================================================
-// Database Interaction Functions (Supabase API)
+// Database Interaction Functions (Firebase Cloud Firestore)
 // ==========================================================================
-
-// Fetch existing words from the database
-async function loadHistoricalWords() {
-    try {
-        const { data, error } = await _supabase
-            .from('words')
-            .select('word')
-            .order('created_at', { ascending: false })
-            .limit(60);
-
-        if (error) throw error;
-
-        if (data && data.length > 0) {
-            // Reverse list to render oldest to newest (for popIn sequence visualization)
-            const words = data.reverse();
-            words.forEach(row => {
-                renderWord(row.word);
-            });
-        }
-    } catch (err) {
-        console.error('Error fetching historical words:', err);
-    }
-}
 
 // Insert new word to the database
 async function submitWord(event) {
@@ -205,14 +191,12 @@ async function submitWord(event) {
     submitBtn.disabled = true;
 
     try {
-        const { error } = await _supabase
-            .from('words')
-            .insert([{ word: word }]);
-
-        if (error) throw error;
-        
-        // Optimistic UI: Render the word immediately on successful submit
-        renderWord(word);
+        // We write to the database. Firestore's local cache will trigger
+        // the realtime listener instantly.
+        await db.collection('words').add({
+            word: word,
+            created_at: new Date() // Client side date object
+        });
         
         // Success: Clear input
         wordInput.value = '';
@@ -226,28 +210,31 @@ async function submitWord(event) {
     }
 }
 
-// Subscribe to Realtime notifications from Supabase Database
+// Subscribe to Realtime notifications from Firestore (also loads historical data)
 function setupRealtimeSubscription() {
-    _supabase
-        .channel('public:words')
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'words' }, (payload) => {
-            if (payload.eventType === 'INSERT') {
-                const newWord = payload.new.word;
-                if (newWord) {
-                    renderWord(newWord);
+    db.collection('words')
+        .orderBy('created_at', 'asc') // Render oldest to newest directly
+        .onSnapshot((snapshot) => {
+            snapshot.docChanges().forEach((change) => {
+                if (change.type === 'added') {
+                    const data = change.data();
+                    renderWord(data.word, change.doc.id);
+                } else if (change.type === 'removed') {
+                    // Remove from wordsList
+                    wordsList = wordsList.filter(item => item.id !== change.doc.id);
+                    // Remove from DOM
+                    const el = cloudContainer.querySelector(`[data-doc-id="${change.doc.id}"]`);
+                    if (el) el.remove();
+                    
+                    // If no words left, show empty state
+                    if (wordsList.length === 0 && emptyState) {
+                        emptyState.style.display = 'block';
+                        clearGrid();
+                    }
                 }
-            } else if (payload.eventType === 'DELETE') {
-                // Synchronize clear cloud event across all clients in real-time
-                wordsList = [];
-                clearGrid();
-                cloudContainer.querySelectorAll('.word-cloud-item').forEach(el => el.remove());
-                if (emptyState) {
-                    emptyState.style.display = 'block';
-                }
-            }
-        })
-        .subscribe((status) => {
-            console.log('Realtime channel subscription status:', status);
+            });
+        }, (error) => {
+            console.error("Realtime subscription error:", error);
         });
 }
 
@@ -257,20 +244,14 @@ async function clearCloud() {
 
     clearCloudBtn.disabled = true;
     try {
-        const { error } = await _supabase
-            .from('words')
-            .delete()
-            .neq('id', 0); // Delete all rows
-
-        if (error) throw error;
-
-        // Local UI Cleanup
-        wordsList = [];
-        clearGrid();
-        cloudContainer.querySelectorAll('.word-cloud-item').forEach(el => el.remove());
-        if (emptyState) {
-            emptyState.style.display = 'block';
-        }
+        const snapshot = await db.collection('words').get();
+        const batch = db.batch();
+        snapshot.docs.forEach((doc) => {
+            batch.delete(doc.ref);
+        });
+        await batch.commit();
+        
+        // UI Cleanup is handled automatically by onSnapshot (removed events)
     } catch (err) {
         console.error('Error clearing words:', err);
         alert('清空失敗，請重試！');
@@ -342,11 +323,7 @@ function init() {
 
     // 2. Safely initialize background features
     try {
-        loadHistoricalWords();
-    } catch (e) { console.error("loadHistoricalWords failed", e); }
-
-    try {
-        setupRealtimeSubscription();
+        setupRealtimeSubscription(); // Handles both initial load & real-time updates
     } catch (e) { console.error("setupRealtimeSubscription failed", e); }
 
     try {
