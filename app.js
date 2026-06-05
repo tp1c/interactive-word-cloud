@@ -1,7 +1,9 @@
 // ==========================================================================
-// Debug Log Visualizer (Displays JS/Firestore errors directly on screen)
+// Debug Log Visualizer (Displays JS/Firestore errors & DOM status on screen)
 // ==========================================================================
-function showDebugError(message) {
+let lastError = null;
+
+function updateDebugInfo() {
     let errDiv = document.getElementById('debug-error-banner');
     if (!errDiv) {
         errDiv = document.createElement('div');
@@ -10,17 +12,32 @@ function showDebugError(message) {
         errDiv.style.top = '10px';
         errDiv.style.left = '50%';
         errDiv.style.transform = 'translateX(-50%)';
-        errDiv.style.background = '#ff4444';
+        errDiv.style.background = 'rgba(10, 10, 25, 0.9)';
+        errDiv.style.border = '1px solid #ff4444';
         errDiv.style.color = '#fff';
-        errDiv.style.padding = '10px 20px';
+        errDiv.style.padding = '8px 16px';
         errDiv.style.borderRadius = '8px';
         errDiv.style.zIndex = '10000';
-        errDiv.style.fontWeight = 'bold';
-        errDiv.style.boxShadow = '0 4px 15px rgba(0,0,0,0.3)';
+        errDiv.style.fontSize = '12px';
+        errDiv.style.fontFamily = 'monospace';
+        errDiv.style.boxShadow = '0 4px 15px rgba(0,0,0,0.5)';
         document.body.appendChild(errDiv);
     }
-    errDiv.textContent = '偵錯資訊: ' + message;
+    
+    const itemsCount = document.querySelectorAll('.word-cloud-item').length;
+    const listCount = wordsList.length;
+    const errorText = lastError ? `<span style="color:#f87171">錯誤: ${lastError}</span>` : '<span style="color:#4ade80">無錯誤</span>';
+    
+    errDiv.innerHTML = `[偵錯] DOM元素: ${itemsCount} | 記憶體陣列: ${listCount} | 狀態: ${errorText}`;
 }
+
+function showDebugError(message) {
+    lastError = message;
+    updateDebugInfo();
+}
+
+// Start visual monitor
+setInterval(updateDebugInfo, 1000);
 
 window.addEventListener('error', (e) => {
     showDebugError(e.message);
