@@ -59,3 +59,36 @@
 
 ### 測試連結：
 - 部署網址：**https://tp1c.github.io/interactive-word-cloud/**
+
+---
+
+## 新增 Google OAuth 2.0 / Firebase Authentication 整合 (2026-06-06)
+
+為了進行與 Antigravity 的 Google Cloud / Firebase Auth 整合連線測試，我們完成了解決安全與使用者權限的 OAuth 2.0 登入機制：
+
+### 1. 變更內容說明
+
+* **[firestore.rules](file:///d:/Data/Home/Antigravity/2026database/firestore.rules)**：
+  - 更新 `/words` 集合的安全性規則，限制 `allow write: if request.auth != null;`。未登入者無法寫入或清除資料庫。
+  - **已成功部署**：使用 `npx firebase-tools deploy` 完成最新規則部署。
+* **[index.html](file:///d:/Data/Home/Antigravity/2026database/index.html)**：
+  - 引入 `firebase-auth-compat.js` SDK。
+  - 新增 Google 登入按鈕區塊，且未登入時預設隱藏輸入框；登入後顯示輸入框。
+  - 新增使用者狀態欄（包含 Google 頭像、姓名、登出按鈕）。
+* **[style.css](file:///d:/Data/Home/Antigravity/2026database/style.css)**：
+  - 設計玻璃擬物化 (Glassmorphic) 登入按鈕與使用者狀態卡片。
+  - 加入頭像外框光暈與微互動浮動動畫。
+* **[app.js](file:///d:/Data/Home/Antigravity/2026database/app.js)**：
+  - 註冊並監聽 `firebase.auth().onAuthStateChanged`。
+  - 實作 `loginWithGoogle()` (支援 Popup 彈出與 Redirect 重新導向) 及 `logout()`。
+  - 寫入詞彙時，將使用者的 `uid` 與 `user_name` 一併存入資料庫以供記錄。
+
+### 2. 測試驗證方式
+
+* **本地端伺服器**：已在本地啟動 http-server 服務於 [http://127.0.0.1:8080](http://127.0.0.1:8080)。
+* **權限測試**：
+  1. 打開頁面時，未登入前會顯示「🔑 使用 Google 登入以參與」按鈕，無法直接輸入詞彙。
+  2. 點擊登入按鈕完成 OAuth 授權後，系統將載入頭像、顯示輸入框。
+  3. 輸入詞彙後，確認可以成功新增到 Firestore 雲端，並實時呈現在畫面上。
+  4. 點擊「🚪 (登出)」後，系統會自動清除狀態，隱藏輸入框並重新顯示登入按鈕。
+

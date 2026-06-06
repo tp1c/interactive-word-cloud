@@ -13,6 +13,7 @@
     <!-- Firebase JS SDK CDN (Compat Version) -->
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
     <!-- QRCode JS Library CDN -->
     <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
 </head>
@@ -33,15 +34,31 @@
                 <h1>即時文字雲 <span>Word Cloud</span></h1>
             </div>
             
-            <form id="word-form" class="word-input-container">
+            <!-- Google Sign-In Container (Shown when logged out) -->
+            <div id="login-container" class="word-input-container">
+                <button id="login-btn" class="btn btn-login btn-submit" style="width: 100%; justify-content: center;">
+                    <span class="icon">🔑</span>
+                    <span>使用 Google 登入以參與</span>
+                    <div class="btn-glow"></div>
+                </button>
+            </div>
+            
+            <!-- Word Input Form (Shown when logged in) -->
+            <form id="word-form" class="word-input-container hidden">
                 <input type="text" id="word-input" placeholder="輸入一個詞彙..." maxlength="25" required autocomplete="off">
                 <button type="submit" class="btn btn-submit">
                     <span>送出</span>
                     <div class="btn-glow"></div>
                 </button>
             </form>
-
+ 
             <div class="header-actions">
+                <!-- User Profile Container (Shown when logged in) -->
+                <div id="user-profile" class="user-profile hidden">
+                    <img id="user-avatar" src="" alt="Avatar" class="user-avatar">
+                    <span id="user-name" class="user-name"></span>
+                    <button id="logout-btn" class="btn-logout" title="登出">🚪</button>
+                </div>
                 <button id="toggle-cloud-btn" class="btn btn-toggle">
                     <span class="icon">👁️</span>
                     <span class="text">隱藏文字雲</span>

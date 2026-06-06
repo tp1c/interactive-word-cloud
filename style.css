@@ -400,6 +400,71 @@ body {
 }
 
 /* ==========================================================================
+   User Profile & Authentication Styles
+   ========================================================================== */
+.hidden {
+    display: none !important;
+}
+
+.user-profile {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.4rem 0.8rem;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--card-border);
+    border-radius: 12px;
+    backdrop-filter: blur(10px);
+    transition: var(--transition-smooth);
+}
+
+.user-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: 1px solid var(--accent-cyan);
+    box-shadow: 0 0 8px rgba(6, 182, 212, 0.3);
+}
+
+.user-name {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    max-width: 120px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.btn-logout {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 1rem;
+    padding: 0.2rem;
+    border-radius: 6px;
+    transition: var(--transition-smooth);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.btn-logout:hover {
+    background: rgba(239, 68, 68, 0.15);
+    transform: scale(1.1);
+}
+
+.btn-login {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    background: linear-gradient(135deg, var(--accent-neon), #7c3aed);
+    color: white;
+    cursor: pointer;
+}
+
+/* ==========================================================================
    Responsive & Accessibility Styles
    ========================================================================== */
 @media (max-width: 768px) {
@@ -413,6 +478,18 @@ body {
         margin: 0;
         width: 100%;
         max-width: none;
+    }
+
+    .header-actions {
+        width: 100%;
+        justify-content: center;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+
+    .user-profile {
+        width: 100%;
+        justify-content: center;
     }
 
     .share-card {

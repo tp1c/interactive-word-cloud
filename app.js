@@ -26,6 +26,14 @@ const qrcodeCanvas = document.getElementById('qrcode-canvas');
 const currentUrlSpan = document.getElementById('current-url');
 const btnCopy = document.getElementById('btn-copy');
 
+// Auth DOM Elements
+const loginContainer = document.getElementById('login-container');
+const loginBtn = document.getElementById('login-btn');
+const userProfile = document.getElementById('user-profile');
+const userAvatar = document.getElementById('user-avatar');
+const userName = document.getElementById('user-name');
+const logoutBtn = document.getElementById('logout-btn');
+
 // State Variables
 let isCloudVisible = true;
 let wordsList = []; // Track loaded words to prevent local duplication
@@ -176,6 +184,65 @@ function hslToRgb(h, s, l) {
 }
 
 // ==========================================================================
+// Authentication Logic (Firebase Auth Google Provider)
+// ==========================================================================
+
+async function loginWithGoogle() {
+    const provider = new firebase.auth.GoogleAuthProvider();
+    try {
+        loginBtn.disabled = true;
+        await firebase.auth().signInWithPopup(provider);
+    } catch (err) {
+        console.error('Google Sign-In Error:', err);
+        if (err.code === 'auth/popup-blocked') {
+            try {
+                await firebase.auth().signInWithRedirect(provider);
+            } catch (redirErr) {
+                console.error('Redirect sign in error:', redirErr);
+                alert('登入視窗被阻擋且重新導向登入失敗！請啟用瀏覽器彈出視窗設定。');
+            }
+        } else if (err.code !== 'auth/cancelled-popup-request') {
+            alert('登入失敗：' + err.message);
+        }
+    } finally {
+        loginBtn.disabled = false;
+    }
+}
+
+async function logout() {
+    try {
+        await firebase.auth().signOut();
+    } catch (err) {
+        console.error('Sign-Out Error:', err);
+        alert('登出失敗，請重試！');
+    }
+}
+
+function onAuthStateChanged(user) {
+    if (user) {
+        // User is signed in
+        loginContainer.classList.add('hidden');
+        wordForm.classList.remove('hidden');
+        userProfile.classList.remove('hidden');
+        
+        userAvatar.src = user.photoURL || 'https://www.gravatar.com/avatar/?d=mp';
+        userName.textContent = user.displayName || '已登入使用者';
+        
+        wordInput.disabled = false;
+        const submitBtn = wordForm.querySelector('.btn-submit');
+        if (submitBtn) submitBtn.disabled = false;
+    } else {
+        // User is signed out
+        loginContainer.classList.remove('hidden');
+        wordForm.classList.add('hidden');
+        userProfile.classList.add('hidden');
+        
+        userAvatar.src = '';
+        userName.textContent = '';
+    }
+}
+
+// ==========================================================================
 // Database Interaction Functions (Firebase Cloud Firestore)
 // ==========================================================================
 
@@ -191,11 +258,16 @@ async function submitWord(event) {
     submitBtn.disabled = true;
 
     try {
+        // Get current authenticated user
+        const currentUser = firebase.auth().currentUser;
+        
         // We write to the database. Firestore's local cache will trigger
         // the realtime listener instantly.
         await db.collection('words').add({
             word: word,
-            created_at: new Date() // Client side date object
+            created_at: new Date(), // Client side date object
+            uid: currentUser ? currentUser.uid : null,
+            user_name: currentUser ? currentUser.displayName : '匿名'
         });
         
         // Success: Clear input
@@ -354,6 +426,11 @@ function init() {
     wordForm.addEventListener('submit', submitWord);
     toggleCloudBtn.addEventListener('click', toggleCloudVisibility);
     clearCloudBtn.addEventListener('click', clearCloud);
+    loginBtn.addEventListener('click', loginWithGoogle);
+    logoutBtn.addEventListener('click', logout);
+
+    // 1.5 Listen for Firebase Auth changes
+    firebase.auth().onAuthStateChanged(onAuthStateChanged);
 
     // 2. Safely initialize background features
     try {
