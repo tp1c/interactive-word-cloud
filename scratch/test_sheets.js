@@ -4,8 +4,12 @@ const process = require('process');
 const { authenticate } = require('@google-cloud/local-auth');
 const { google } = require('googleapis');
 
-// Define scopes: we need read/write access to sheets
-const SCOPES = ['https://www.googleapis.com/auth/spreadsheets'];
+// Define scopes: we need read/write access to sheets, documents, and drive files
+const SCOPES = [
+  'https://www.googleapis.com/auth/spreadsheets',
+  'https://www.googleapis.com/auth/documents',
+  'https://www.googleapis.com/auth/drive.file'
+];
 
 const CREDENTIALS_PATH = path.join(__dirname, 'credentials.json');
 const TOKEN_PATH = path.join(__dirname, 'token.json');
